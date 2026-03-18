@@ -34,6 +34,11 @@ onAuthStateChanged(auth, (user) => {
         currentUser = user;
         document.getElementById('user-avatar').src = user.photoURL;
         document.getElementById('user-avatar').classList.remove('hide');
+        
+        // Kullanıcı e-postasını başlığa yazdır
+        document.getElementById('user-email-display').textContent = user.email;
+        document.getElementById('user-email-display').classList.remove('hide');
+        
         switchView(views.app);
         
         // Uygulama açıldığında tarayıcı bildirim izni iste
@@ -69,7 +74,7 @@ function listenToChats() {
             const other = d.data().users.find(u => u !== currentUser.email);
             const li = document.createElement('li');
             li.className = 'chat-item glass-panel';
-            li.innerHTML = `<b>\${other}</b>`;
+            li.innerHTML = `<b>${other}</b>`;
             li.onclick = () => openChat(other);
             list.appendChild(li);
         });
@@ -98,7 +103,8 @@ document.getElementById('send-btn').onclick = () => {
 };
 
 function listenToMessages() {
-    const q = query(collection(db, 'messages'), where('chatId', '==', currentChatId), orderBy('createdAt', 'asc'));
+    // Firestore composite index hatası almamak için orderBy'ı buradan kaldırdık
+    const q = query(collection(db, 'messages'), where('chatId', '==', currentChatId));
     onSnapshot(q, s => {
         const container = document.getElementById('chat-messages');
         
@@ -118,9 +124,17 @@ function listenToMessages() {
             });
         }
 
+        // Mesajları Javascript tarafında tarihe göre sırala
+        const allMsgs = [];
+        s.forEach(d => allMsgs.push(d.data()));
+        allMsgs.sort((a,b) => {
+            const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+            const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+            return timeA - timeB;
+        });
+
         container.innerHTML = '';
-        s.forEach(d => {
-            const m = d.data();
+        allMsgs.forEach(m => {
             const div = document.createElement('div');
             div.className = `message-bubble ${m.sender === currentUser.email ? 'sent' : 'received'}`;
             div.innerHTML = m.audioUrl ? `<audio controls src="${m.audioUrl}"></audio>` : m.text;

@@ -30,9 +30,12 @@
 
     <div id="app-view" class="view">
         <header class="app-header glass-header">
-            <div class="header-content w-full">
+            <div class="header-content w-full" style="display: flex; justify-content: space-between; align-items: center;">
                 <h2 class="app-title">Sohbetler</h2>
-                <img id="user-avatar" class="hide" src="" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover;">
+                <div style="display: flex; align-items: center; gap: 0.5rem; background: var(--surface-light); padding: 0.25rem 0.5rem 0.25rem 0.75rem; border-radius: 50px; border: 1px solid var(--glass-border);">
+                    <span id="user-email-display" class="hide" style="font-size: 0.85rem; color: var(--text-muted);"></span>
+                    <img id="user-avatar" class="hide" src="" style="width: 30px; height: 30px; border-radius: 50%; object-fit: cover;">
+                </div>
             </div>
             <div class="search-bar-container mt-4">
                 <i class="ri-search-line search-icon"></i>
