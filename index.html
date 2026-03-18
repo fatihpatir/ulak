@@ -4,135 +4,72 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ULAK</title>
-    
-    <!-- PWA Setup -->
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#09090b">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="./assets/icon-192.png">
-    
-    <!-- Fonts & Icons -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
-    
-    <!-- CSS -->
     <link rel="stylesheet" href="./style.css">
 </head>
 <body>
 
-    <!-- Top Right 'i' Button -->
-    <button id="info-btn" class="glass-btn icon-btn top-right-btn" aria-label="Hakkında">
-        <i class="ri-information-line"></i>
-    </button>
+    <button id="info-btn" class="glass-btn icon-btn top-right-btn"><i class="ri-information-line"></i></button>
 
-    <!-- Authentication View -->
     <div id="auth-view" class="view active-view">
-        <div class="auth-container glass-panel">
-            <div class="logo-container">
-                <div class="logo-icon"><i class="ri-meteor-line"></i></div>
-                <h1 class="logo-text">ULAK</h1>
+        <div class="auth-container">
+            <div class="logo-area">
+                <div class="main-logo"><i class="ri-meteor-line"></i></div>
+                <h1 class="app-title">ULAK</h1>
             </div>
-            <p class="auth-subtitle">Yeni Nesil İletişim Platformu</p>
-            <button id="google-login-btn" class="primary-btn pulse-glow">
-                <i class="ri-google-fill"></i> Google ile Giriş Yap
-            </button>
+            <button id="google-login-btn" class="google-btn">Google ile Giriş Yap</button>
         </div>
     </div>
 
-    <!-- Main App View -->
     <div id="app-view" class="view">
-        <header class="app-header glass-header">
-            <div class="header-content">
-                <h2 class="app-title">Sohbetlerim</h2>
-                <div class="search-bar-container">
-                    <i class="ri-search-line search-icon"></i>
-                    <input type="text" id="search-input" class="search-input" placeholder="Sohbetlerde ara...">
-                </div>
-            </div>
-            <div class="user-profile">
-                <!-- User avatar will be injected here -->
-                <img id="user-avatar" src="" alt="Profil" class="avatar hide">
-            </div>
+        <header class="app-header">
+            <h2>Sohbetler</h2>
+            <img id="user-avatar" class="avatar-sm hide" src="">
         </header>
-
-        <main class="chat-list-container">
-            <ul id="chat-list" class="chat-list">
-                <!-- Firebase chats will be rendered here -->
-                <div class="empty-state">
-                    <i class="ri-message-3-line empty-icon"></i>
-                    <p>Henüz sohbetiniz yok.</p>
-                    <p class="empty-sub">Sağ alttaki butondan yeni sohbet başlatın.</p>
-                </div>
-            </ul>
-        </main>
-
-        <!-- Floating Action Button for New Chat -->
-        <button id="new-chat-fab" class="fab pulse-glow" aria-label="Yeni Sohbet Başlat">
-            <i class="ri-add-line"></i>
-        </button>
+        <ul id="chat-list" class="chat-list"></ul>
+        <button id="new-chat-fab" class="fab-btn"><i class="ri-add-line"></i></button>
     </div>
 
-    <!-- Modals -->
+    <div id="chat-detail-view" class="view">
+        <header class="chat-header">
+            <button id="back-to-chats-btn" class="icon-btn"><i class="ri-arrow-left-s-line"></i></button>
+            <div class="chat-header-info">
+                <h3 id="chat-header-name">Yükleniyor...</h3>
+            </div>
+            <button id="start-call-btn" class="icon-btn"><i class="ri-vidicon-line"></i></button>
+        </header>
+        <div id="chat-messages" class="chat-messages-container"></div>
+        
+        <div id="recording-indicator" class="recording-bar hide">Kayıt yapılıyor...</div>
+        
+        <div class="chat-input-area">
+            <button id="mic-btn" class="icon-btn"><i class="ri-mic-fill"></i></button>
+            <input type="text" id="message-input" placeholder="Mesajınızı yazın...">
+            <button id="send-btn" class="icon-btn"><i class="ri-send-plane-fill"></i></button>
+        </div>
+    </div>
 
-    <!-- Info Modal -->
     <div id="info-modal" class="modal-overlay">
-        <div class="modal glass-modal">
-            <div class="modal-header">
-                <h3>Hakkında</h3>
-                <button class="close-modal-btn icon-btn"><i class="ri-close-line"></i></button>
-            </div>
-            <div class="modal-body info-body">
-                <div class="modal-logo"><i class="ri-meteor-line"></i></div>
-                <h4>ULAK</h4>
-                <p class="version-text">Haberleşme Platformu v1.0</p>
-                <div class="divider"></div>
-                <p class="developer-text">Geliştirici:</p>
-                <p class="developer-name text-gradient">Fatih PATIR</p>
-            </div>
+        <div class="modal-content glass-panel">
+            <h3>Sistem Bilgisi</h3>
+            <p>Geliştirici: <b>Fatih PATIR</b></p>
+            <button class="close-modal-btn">Kapat</button>
         </div>
     </div>
 
-    <!-- New Chat Modal -->
     <div id="new-chat-modal" class="modal-overlay">
-        <div class="modal glass-modal">
-            <div class="modal-header">
-                <h3>Yeni Sohbet Başlat</h3>
-                <button class="close-modal-btn icon-btn"><i class="ri-close-line"></i></button>
-            </div>
-            <div class="modal-body new-chat-body">
-                <p class="modal-desc">Sohbet etmek istediğiniz kullanıcının e-posta adresini girin.</p>
-                <div class="input-group">
-                    <i class="ri-mail-line input-icon"></i>
-                    <input type="email" id="new-chat-email" class="modal-input" placeholder="ornek@eposta.com">
-                </div>
-                <button id="start-chat-btn" class="primary-btn mt-4 w-full">Sohbeti Başlat</button>
-            </div>
+        <div class="modal-content glass-panel">
+            <h3>Yeni Sohbet</h3>
+            <input type="email" id="new-chat-email" placeholder="E-posta adresi...">
+            <button id="start-chat-btn">Başlat</button>
+            <button class="close-modal-btn">İptal</button>
         </div>
     </div>
 
-    <!-- Footer -->
-    <footer class="app-footer">
-        <a href="https://fatihpatir.github.io/web" target="_blank" rel="noopener noreferrer" class="footer-link">
-            Nene Hatun MTAL Korkuteli/Antalya Bilişim Teknolojileri Öğretmeni - Fatih PATIR
-        </a>
-    </footer>
-
-    <!-- Firebase SDKs (Modular v9+) -->
-    <!-- App Logic -->
     <script type="module" src="./app.js"></script>
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js').then(registration => {
-                    console.log('SW registered: ', registration.scope);
-                }).catch(err => {
-                    console.log('SW registration failed: ', err);
-                });
-            });
-        }
-    </script>
 </body>
 </html>

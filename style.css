@@ -422,6 +422,50 @@ button {
     color: var(--primary);
 }
 
+/* Chat Detail View */
+.chat-messages-container {
+    scrollbar-width: thin;
+    scrollbar-color: var(--glass-border) transparent;
+}
+.chat-messages-container::-webkit-scrollbar {
+    width: 6px;
+}
+.chat-messages-container::-webkit-scrollbar-thumb {
+    background-color: var(--glass-border);
+    border-radius: var(--radius-full);
+}
+
+.message-bubble {
+    max-width: 80%;
+    padding: 0.75rem 1.25rem;
+    border-radius: var(--radius-lg);
+    font-size: 0.95rem;
+    line-height: 1.4;
+    animation: fadeIn 0.3s ease forwards;
+    position: relative;
+    word-break: break-word;
+}
+.message-bubble.sent {
+    align-self: flex-end;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    color: #fff;
+    border-bottom-right-radius: 4px;
+}
+.message-bubble.received {
+    align-self: flex-start;
+    background: var(--surface-light);
+    border: 1px solid var(--glass-border);
+    color: var(--text-main);
+    border-bottom-left-radius: 4px;
+}
+.message-time {
+    font-size: 0.7rem;
+    opacity: 0.7;
+    margin-top: 0.25rem;
+    text-align: right;
+    display: block;
+}
+
 /* Animations */
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(10px); }
