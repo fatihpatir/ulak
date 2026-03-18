@@ -35,6 +35,12 @@ onAuthStateChanged(auth, (user) => {
         document.getElementById('user-avatar').src = user.photoURL;
         document.getElementById('user-avatar').classList.remove('hide');
         switchView(views.app);
+        
+        // Uygulama açıldığında tarayıcı bildirim izni iste
+        if ("Notification" in window && Notification.permission === "default") {
+            Notification.requestPermission();
+        }
+        
         listenToChats();
     } else {
         switchView(views.auth);
@@ -95,12 +101,29 @@ function listenToMessages() {
     const q = query(collection(db, 'messages'), where('chatId', '==', currentChatId), orderBy('createdAt', 'asc'));
     onSnapshot(q, s => {
         const container = document.getElementById('chat-messages');
+        
+        // Yeni mesaj var mı kontrolü (İlk yüklemede bildirim atmasın diye)
+        if (container.childElementCount > 0) {
+            s.docChanges().forEach(change => {
+                if (change.type === 'added') {
+                    const m = change.doc.data();
+                    // Mesaj bizden değilse ve site arka plandaysa bildirim gönder
+                    if (m.sender !== currentUser.email && document.hidden && "Notification" in window && Notification.permission === "granted") {
+                        new Notification(m.sender + " sana yazdı", {
+                            body: m.text || "Sesli mesaj",
+                            icon: './assets/icon.png' // Varsa ikonunu kullanır, yoksa tarayıcı varsayılan
+                        });
+                    }
+                }
+            });
+        }
+
         container.innerHTML = '';
         s.forEach(d => {
             const m = d.data();
             const div = document.createElement('div');
-            div.className = \`message-bubble \${m.sender === currentUser.email ? 'sent' : 'received'}\`;
-            div.innerHTML = m.audioUrl ? \`<audio controls src="\${m.audioUrl}"></audio>\` : m.text;
+            div.className = `message-bubble ${m.sender === currentUser.email ? 'sent' : 'received'}`;
+            div.innerHTML = m.audioUrl ? `<audio controls src="${m.audioUrl}"></audio>` : m.text;
             container.appendChild(div);
         });
         container.scrollTop = container.scrollHeight;
