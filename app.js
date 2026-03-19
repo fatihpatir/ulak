@@ -28,9 +28,13 @@ const userCache = {}; // E-posta adresine karşılık isimleri tutmak için
 
 // Service Worker (PWA) Kaydı (Ana Ekrana Ekleme için şart)
 if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js')
-      .then(reg => console.log('Service Worker başarıyla kaydedildi.', reg.scope))
-      .catch(err => console.error('Service Worker kayıt hatası:', err));
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./firebase-messaging-sw.js') // Öncelikli SW bu
+          .then(reg => {
+              console.log('Firebase Service Worker başarıyla kaydedildi.', reg.scope);
+          })
+          .catch(err => console.error('Service Worker kayıt hatası:', err));
+    });
 }
 
 function switchView(id) {
@@ -45,8 +49,12 @@ onAuthStateChanged(auth, (user) => {
         document.getElementById('user-avatar').src = user.photoURL;
         document.getElementById('user-avatar').classList.remove('hide');
         
-        // Google fotoğrafını veritabanına da kopyala (Görüntülenebilmesi için)
-        setDoc(doc(db, 'users', currentUser.email), { photoURL: user.photoURL }, { merge: true });
+        // Google fotoğrafını ve varsayılan ismi veritabanına da kopyala/güncelle
+        setDoc(doc(db, 'users', currentUser.email), { 
+            photoURL: user.photoURL,
+            // Eğer daha önce isim girmemişse Google ismini kullan
+            displayName: currentUser.displayNameCustom || user.displayName || user.email.split('@')[0]
+        }, { merge: true });
         
         // Profil ismini çek
         getDoc(doc(db, 'users', currentUser.email)).then(snap => {

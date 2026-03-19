@@ -17,13 +17,41 @@ firebase.initializeApp(firebaseConfig);
 // Retrieve firebase messaging
 const messaging = firebase.messaging();
 
+// Arka plan mesajlarını yakala
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Arka plan bildirimi geldi:', payload);
-  const notificationTitle = payload.notification.title;
+  
+  const notificationTitle = payload.notification?.title || 'ULAK - Yeni Mesaj';
   const notificationOptions = {
-    body: payload.notification.body,
-    icon: '/assets/icon.png'
+    body: payload.notification?.body || 'Bir mesajınız var.',
+    icon: '/assets/icon.png',
+    badge: '/assets/icon.png', // Android için ufak ikon
+    vibrate: [200, 100, 200], // Telefon titremesi
+    tag: 'ulak-new-message', // Aynı kişiden mesaj gelirse üst üste binmesin
+    renotify: true, // Yeni mesaj gelince tekrar titret
+    data: {
+        url: '/' // Bildirime tıklayınca siteye gitsin
+    }
   };
 
-  self.registration.showNotification(notificationTitle, notificationOptions);
+  return self.registration.showNotification(notificationTitle, notificationOptions);
+});
+
+// Bildirime tıklandığında uygulamayı aç
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close(); // Bildirimi kapat
+    event.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+            if (clientList.length > 0) {
+                let client = clientList[0];
+                for (let i = 0; i < clientList.length; i++) {
+                    if (clientList[i].focused) {
+                        client = clientList[i];
+                    }
+                }
+                return client.focus();
+            }
+            return clients.openWindow('/');
+        })
+    );
 });
