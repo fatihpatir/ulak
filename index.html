@@ -115,16 +115,38 @@
     <div id="new-chat-modal" class="modal-overlay">
         <div class="modal glass-panel">
             <div class="modal-header">
-                <h3>Yeni Sohbet</h3>
+                <h3>Yeni Sohbet / Grup</h3>
                 <button class="close-modal-btn icon-btn"><i class="ri-close-line"></i></button>
             </div>
             <div class="modal-body">
-                <p class="modal-desc">Sohbet başlatmak için kullanıcının e-posta adresini girin.</p>
-                <div class="input-group">
-                    <i class="ri-mail-line input-icon"></i>
-                    <input type="email" id="new-chat-email" class="modal-input" placeholder="E-posta adresi...">
+                <div class="tab-buttons" style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+                    <button id="tab-personal" class="primary-btn" style="flex: 1; justify-content: center; font-size: 0.8rem; padding: 0.5rem; background: var(--surface-light);">Bireysel</button>
+                    <button id="tab-group" class="primary-btn" style="flex: 1; justify-content: center; font-size: 0.8rem; padding: 0.5rem; background: transparent; border: 1px solid var(--glass-border);">Grup</button>
                 </div>
-                <button id="start-chat-btn" class="primary-btn w-full mt-4" style="justify-content: center;">Başlat</button>
+
+                <!-- Bireysel Sohbet Paneli -->
+                <div id="panel-personal">
+                    <p class="modal-desc">Sohbet başlatmak için e-posta adresi girin.</p>
+                    <div class="input-group">
+                        <i class="ri-mail-line input-icon"></i>
+                        <input type="email" id="new-chat-email" class="modal-input" placeholder="E-posta adresi...">
+                    </div>
+                </div>
+
+                <!-- Grup Sohbet Paneli -->
+                <div id="panel-group" class="hide">
+                    <p class="modal-desc">Grup adı ve katılımcıları (virgülle ayırarak) girin.</p>
+                    <div class="input-group mb-2">
+                        <i class="ri-team-line input-icon"></i>
+                        <input type="text" id="new-group-name" class="modal-input" placeholder="Grup Adı...">
+                    </div>
+                    <div class="input-group">
+                        <i class="ri-contacts-book-line input-icon"></i>
+                        <input type="text" id="new-group-emails" class="modal-input" placeholder="E-postalar (virgülle ayırın)...">
+                    </div>
+                </div>
+
+                <button id="start-chat-btn" class="primary-btn w-full mt-4" style="justify-content: center;">Sohbeti Başlat</button>
             </div>
         </div>
     </div>

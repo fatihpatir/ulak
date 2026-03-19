@@ -98,15 +98,55 @@ function requestFirebaseToken() {
 
 document.getElementById('google-login-btn').onclick = () => signInWithPopup(auth, provider);
 
-// Sohbet Başlatma
+// Sohbet/Grup Başlatma
+let currentChatType = 'personal'; 
+document.getElementById('tab-personal').onclick = () => {
+    currentChatType = 'personal';
+    document.getElementById('panel-personal').classList.remove('hide');
+    document.getElementById('panel-group').classList.add('hide');
+    document.getElementById('tab-personal').style.background = 'var(--surface-light)';
+    document.getElementById('tab-group').style.background = 'transparent';
+};
+document.getElementById('tab-group').onclick = () => {
+    currentChatType = 'group';
+    document.getElementById('panel-group').classList.remove('hide');
+    document.getElementById('panel-personal').classList.add('hide');
+    document.getElementById('tab-group').style.background = 'var(--surface-light)';
+    document.getElementById('tab-personal').style.background = 'transparent';
+};
+
 document.getElementById('new-chat-fab').onclick = () => document.getElementById('new-chat-modal').classList.add('open');
+
 document.getElementById('start-chat-btn').onclick = async () => {
-    const email = document.getElementById('new-chat-email').value.trim().toLowerCase();
-    if(!email) return;
-    const chatId = [currentUser.email, email].sort().join('_');
-    await setDoc(doc(db, 'chats', chatId), { users: [currentUser.email, email], lastTime: serverTimestamp() }, { merge: true });
-    document.getElementById('new-chat-modal').classList.remove('open');
-    openChat(email);
+    if (currentChatType === 'personal') {
+        const email = document.getElementById('new-chat-email').value.trim().toLowerCase();
+        if(!email) return;
+        const chatId = [currentUser.email, email].sort().join('_');
+        await setDoc(doc(db, 'chats', chatId), { 
+            type: 'personal',
+            users: [currentUser.email, email], 
+            lastTime: serverTimestamp() 
+        }, { merge: true });
+        document.getElementById('new-chat-modal').classList.remove('open');
+        openChat(email, { name: email.split('@')[0], photoURL: null }, 'personal');
+    } else {
+        const gName = document.getElementById('new-group-name').value.trim();
+        const emailsStr = document.getElementById('new-group-emails').value.trim().toLowerCase();
+        if(!gName || !emailsStr) return;
+        
+        const emails = emailsStr.split(',').map(e => e.trim()).filter(e => e !== "");
+        emails.push(currentUser.email); // Kendimizi ekle
+        
+        const chatId = 'group_' + Date.now(); // Benzersiz grup ID
+        await setDoc(doc(db, 'chats', chatId), { 
+            type: 'group',
+            groupName: gName,
+            users: emails, 
+            lastTime: serverTimestamp() 
+        });
+        document.getElementById('new-chat-modal').classList.remove('open');
+        openChat(chatId, { name: gName, isGroup: true }, 'group');
+    }
 };
 
 function listenToChats() {
@@ -115,29 +155,44 @@ function listenToChats() {
         const list = document.getElementById('chat-list');
         list.innerHTML = '';
         s.forEach(d => {
-            const other = d.data().users.find(u => u !== currentUser.email);
+            const data = d.data();
+            const chatId = d.id;
             const li = document.createElement('li');
             li.className = 'chat-item glass-panel';
-            li.innerHTML = `<span style="padding: 1rem;">Yükleniyor...</span>`;
-            li.onclick = () => openChat(other);
-            list.appendChild(li);
-            
-            // İsmi ve resmi arka planda çek ve güncelle
-            getUserProfile(other).then(profile => {
-                li.style.display = 'flex';
-                li.style.alignItems = 'center';
-                li.style.gap = '1rem';
-                li.style.padding = '0.75rem 1rem';
-                li.style.cursor = 'pointer';
+            li.style.display = 'flex';
+            li.style.alignItems = 'center';
+            li.style.gap = '1rem';
+            li.style.padding = '0.75rem 1rem';
+            li.style.cursor = 'pointer';
+
+            if (data.type === 'group') {
+                // GRUP GÖRÜNÜMÜ
                 li.innerHTML = `
-                    <img src="${profile.photoURL || 'https://ui-avatars.com/api/?name='+profile.name+'&background=random'}" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover; border: 1px solid var(--glass-border);">
+                    <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; border: 1px solid var(--glass-border);">
+                        <i class="ri-team-line" style="color: white;"></i>
+                    </div>
                     <div style="flex: 1; overflow: hidden;">
-                        <span style="font-size: 1.1rem; font-weight: 600; color: var(--text-main); display: block; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${profile.name}</span>
-                        <span style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-top: 0.2rem; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${other}</span>
+                        <span style="font-size: 1.1rem; font-weight: 600; color: var(--text-main); display: block;">${data.groupName}</span>
+                        <span style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-top: 0.2rem;">${data.users.length} Katılımcı</span>
                     </div>
                 `;
-                li.onclick = () => openChat(other, profile);
-            });
+                li.onclick = () => openChat(chatId, { name: data.groupName, isGroup: true }, 'group');
+            } else {
+                // BİREYSEL GÖRÜNÜM
+                const other = data.users.find(u => u !== currentUser.email);
+                li.innerHTML = `<span style="padding: 1rem;">Yükleniyor...</span>`;
+                getUserProfile(other).then(profile => {
+                    li.innerHTML = `
+                        <img src="${profile.photoURL || 'https://ui-avatars.com/api/?name='+profile.name+'&background=random'}" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover; border: 1px solid var(--glass-border);">
+                        <div style="flex: 1; overflow: hidden;">
+                            <span style="font-size: 1.1rem; font-weight: 600; color: var(--text-main); display: block;">${profile.name}</span>
+                            <span style="font-size: 0.8rem; color: var(--text-muted); display: block;">${other}</span>
+                        </div>
+                    `;
+                    li.onclick = () => openChat(other, profile, 'personal');
+                });
+            }
+            list.appendChild(li);
         });
     });
 }
@@ -157,18 +212,22 @@ async function getUserProfile(email) {
     return { name: email.split('@')[0], photoURL: null };
 }
 
-function openChat(email, profile = null) {
-    currentChatId = [currentUser.email, email].sort().join('_');
-    const nameToDisplay = profile ? profile.name : email.split('@')[0];
-    const photoToDisplay = profile && profile.photoURL ? profile.photoURL : 'https://ui-avatars.com/api/?name='+nameToDisplay+'&background=random';
+function openChat(targetId, profile = null, type = 'personal') {
+    if (type === 'personal') {
+        currentChatId = [currentUser.email, targetId].sort().join('_');
+        document.getElementById('chat-header-email').textContent = targetId;
+        document.getElementById('current-chat-avatar').src = profile ? (profile.photoURL || 'https://ui-avatars.com/api/?name='+profile.name+'&background=random') : '';
+    } else {
+        currentChatId = targetId; // Grup ID'si zaten tekil
+        document.getElementById('chat-header-email').textContent = 'Grup Sohbeti';
+        document.getElementById('current-chat-avatar').src = 'https://ui-avatars.com/api/?name=Group&background=3b82f6';
+    }
     
-    document.getElementById('chat-header-name').textContent = nameToDisplay;
-    document.getElementById('chat-header-email').textContent = email;
-    document.getElementById('current-chat-avatar').src = photoToDisplay;
+    document.getElementById('chat-header-name').textContent = profile ? profile.name : 'Sohbet';
     document.getElementById('current-chat-avatar').classList.remove('hide');
     
     switchView(views.detail);
-    listenToMessages();
+    listenToMessages(type);
 }
 
 // Görüntülü Arama İşlemi (Jitsi Altyapısı ile Tek Tıkla Bağlantı)
@@ -195,28 +254,40 @@ async function sendMsg(text, url = null) {
     if(!text && !url) return;
     
     // 1. Veritabanına mesajı kaydet
-    await addDoc(collection(db, 'messages'), { chatId: currentChatId, sender: currentUser.email, text, audioUrl: url, createdAt: serverTimestamp() });
+    await addDoc(collection(db, 'messages'), { 
+        chatId: currentChatId, 
+        sender: currentUser.email, 
+        senderName: currentUser.displayNameCustom || currentUser.displayName || currentUser.email.split('@')[0],
+        text, 
+        audioUrl: url, 
+        createdAt: serverTimestamp() 
+    });
     
     // 2. Kapalıyken (Uygulama arka plandayken) "Gerçek" bildirim göndermek için Vercel Sunucusunu (Postacıyı) Çağır!
     try {
-        // Karşı tarafın epostasını sohbet idsinden bul
-        const otherUserEmail = currentChatId.split('_').find(e => e !== currentUser.email);
-        
-        // Veritabanından karşı tarafın kayıtlı cihaz kimliğini (Token) çek
-        const snap = await getDoc(doc(db, 'users', otherUserEmail));
-        if (snap.exists() && snap.data().fcmToken) {
-            const receiverToken = snap.data().fcmToken;
+        // Sohbet bilgilerini çek (Katılımcıları bulmak için)
+        const chatSnap = await getDoc(doc(db, 'chats', currentChatId));
+        if (chatSnap.exists()) {
+            const chatData = chatSnap.data();
+            const recipients = chatData.users.filter(u => u !== currentUser.email);
             
-            // Postacıya bilgileri paketleyip ilet (Netlify Tam URL)
-            fetch('https://exquisite-squirrel-b10f4e.netlify.app/.netlify/functions/sendNotification', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    token: receiverToken,
-                    title: currentUser.displayNameCustom || currentUser.email.split('@')[0],
-                    body: text || 'Sana bir resimli/sesli mesaj gönderdi.'
-                })
-            }).catch(e => console.error("Postacı çağrısı başarısız:", e));
+            // Tüm katılımcılara bildirim fırlat
+            recipients.forEach(async (otherUserEmail) => {
+                const userSnap = await getDoc(doc(db, 'users', otherUserEmail));
+                if (userSnap.exists() && userSnap.data().fcmToken) {
+                    const receiverToken = userSnap.data().fcmToken;
+                    
+                    fetch('https://exquisite-squirrel-b10f4e.netlify.app/.netlify/functions/sendNotification', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            token: receiverToken,
+                            title: (chatData.type === 'group' ? `[${chatData.groupName}] ` : '') + (currentUser.displayNameCustom || currentUser.email.split('@')[0]),
+                            body: text || 'Bir sesli mesaj/arayüz gönderdi.'
+                        })
+                    }).catch(e => console.error("Bildirim hatası:", e));
+                }
+            });
         }
     } catch(err) {
         console.error("Bildirim gönderme sürecinde hata:", err);
@@ -328,8 +399,7 @@ document.getElementById('save-settings-btn').onclick = async () => {
     }
 };
 
-function listenToMessages() {
-    // Firestore composite index hatası almamak için orderBy'ı buradan kaldırdık
+function listenToMessages(chatType = 'personal') {
     const q = query(collection(db, 'messages'), where('chatId', '==', currentChatId));
     onSnapshot(q, s => {
         const container = document.getElementById('chat-messages');
@@ -348,8 +418,8 @@ function listenToMessages() {
                         
                         // Site arka plandaysa görsel sistem bildirimi gönder
                         if (document.hidden && "Notification" in window && Notification.permission === "granted") {
-                            new Notification(m.sender.split('@')[0] + " sana yazdı", {
-                                body: m.text || "Sesli veya görüntülü arama gönderdi",
+                            new Notification(m.senderName || m.sender.split('@')[0], {
+                                body: m.text || "Yeni bir içerik gönderdi",
                                 icon: './assets/icon.png' 
                             });
                         }
@@ -370,11 +440,20 @@ function listenToMessages() {
         container.innerHTML = '';
         allMsgs.forEach(m => {
             const div = document.createElement('div');
-            div.className = `message-bubble ${m.sender === currentUser.email ? 'sent' : 'received'}`;
-            // Ses dosyası varsa ses oynatıcı render et, yoksa text içine link bağlayıcı ekle
-            div.innerHTML = m.audioUrl 
+            const isMe = m.sender === currentUser.email;
+            div.className = `message-bubble ${isMe ? 'sent' : 'received'}`;
+            
+            let content = '';
+            // Grup sohbetiyse ve mesaj bizden değilse üstte isim göster
+            if (chatType === 'group' && !isMe) {
+                content += `<span style="font-size: 0.7rem; font-weight: bold; color: var(--accent); display: block; margin-bottom: 0.2rem;">${m.senderName || m.sender.split('@')[0]}</span>`;
+            }
+
+            content += m.audioUrl 
                 ? `<audio controls src="${m.audioUrl}" style="max-width: 200px; height: 36px; border-radius: 50px; outline: none;"></audio>` 
                 : linkify(m.text);
+            
+            div.innerHTML = content;
             container.appendChild(div);
         });
         container.scrollTop = container.scrollHeight;
