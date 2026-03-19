@@ -163,7 +163,24 @@ function openChat(email, profile = null) {
     listenToMessages();
 }
 
+// Görüntülü Arama İşlemi (Jitsi Altyapısı ile Tek Tıkla Bağlantı)
+document.getElementById('start-call-btn').onclick = () => {
+    // Sohbet için gizli bir yayın linki oluştur ve mektuba ekle
+    const callLink = `https://meet.jit.si/ULAK_Ozel_Sohbet_${currentChatId}`;
+    sendMsg("🎥 <b>Görüntülü Arama Başlatıldı!</b><br>Katılmak için aşağıdaki linke tıklayın:<br>" + callLink);
+    // Kendi penceresinde aramayı aç
+    window.open(callLink, '_blank');
+};
+
 document.getElementById('back-to-chats-btn').onclick = () => switchView(views.app);
+
+// Linkleri tıklanabilir formata çeviren asistan fonksiyon
+function linkify(text) {
+    const urlRegex = /(https?:\/\/[^\s<]+)/g;
+    return text.replace(urlRegex, function(url) {
+        return `<a href="${url}" target="_blank" style="color: #60a5fa; text-decoration: underline; font-weight: 500;">Bağlantıya Git 🔗</a>`;
+    });
+}
 
 // Mesajlaşma
 async function sendMsg(text, url = null) {
@@ -202,6 +219,63 @@ document.getElementById('send-btn').onclick = () => {
     const input = document.getElementById('message-input');
     sendMsg(input.value);
     input.value = '';
+};
+
+// Bas Konuş (Ses Kaydetme) İşlemleri
+let mediaRecorder;
+let audioChunks = [];
+let isRecording = false;
+const micBtn = document.getElementById('mic-btn');
+const recordingIndicator = document.getElementById('recording-indicator');
+
+micBtn.onclick = async () => {
+    if (!isRecording) {
+        // Kaydı Başlat
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+            audioChunks = [];
+            
+            mediaRecorder.ondataavailable = e => {
+                if (e.data.size > 0) audioChunks.push(e.data);
+            };
+            
+            mediaRecorder.onstop = async () => {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                const fileName = `audios/${Date.now()}_${currentUser.uid}.webm`;
+                const storageRef = ref(storage, fileName);
+                
+                recordingIndicator.innerHTML = "<i class='ri-loader-4-line ri-spin'></i> Fırlatılıyor...";
+                
+                try {
+                    await uploadBytes(storageRef, audioBlob);
+                    const url = await getDownloadURL(storageRef);
+                    await sendMsg('', url); // Metin boş, url dolu yolla
+                } catch(e) {
+                    console.error("Ses yükleme hatası", e);
+                }
+                
+                recordingIndicator.classList.add('hide');
+                recordingIndicator.innerHTML = "<i class='ri-record-circle-line pulse-glow'></i> Ses kaydediliyor...";
+            };
+            
+            mediaRecorder.start();
+            isRecording = true;
+            micBtn.style.color = '#ef4444'; // Mikrofon kırmızı olsun
+            micBtn.innerHTML = '<i class="ri-stop-circle-fill pulse-glow"></i>';
+            recordingIndicator.classList.remove('hide');
+        } catch (err) {
+            console.error('Mikrofon izni alınamadı:', err);
+            alert("Ses gönderebilmek için mikrofon izni vermeniz şart kral!");
+        }
+    } else {
+        // Kaydı Durdur ve Yolla
+        mediaRecorder.stop();
+        mediaRecorder.stream.getTracks().forEach(t => t.stop()); // Kaynağı bırak
+        isRecording = false;
+        micBtn.style.color = 'var(--text-muted)';
+        micBtn.innerHTML = '<i class="ri-mic-fill"></i>';
+    }
 };
 
 // Ayarlar Sayfası İşlemleri
@@ -257,12 +331,20 @@ function listenToMessages() {
             s.docChanges().forEach(change => {
                 if (change.type === 'added') {
                     const m = change.doc.data();
-                    // Mesaj bizden değilse ve site arka plandaysa bildirim gönder
-                    if (m.sender !== currentUser.email && document.hidden && "Notification" in window && Notification.permission === "granted") {
-                        new Notification(m.sender + " sana yazdı", {
-                            body: m.text || "Sesli mesaj",
-                            icon: './assets/icon.png' // Varsa ikonunu kullanır, yoksa tarayıcı varsayılan
-                        });
+                    
+                    // Mesaj bizden değilse
+                    if (m.sender !== currentUser.email) {
+                        // Şık ve yumuşak bir Whatsapp tarzı ses çal!
+                        const popSound = new Audio('https://actions.google.com/sounds/v1/water/water_drop.ogg');
+                        popSound.play().catch(e => console.log('Sessiz mod', e));
+                        
+                        // Site arka plandaysa görsel sistem bildirimi gönder
+                        if (document.hidden && "Notification" in window && Notification.permission === "granted") {
+                            new Notification(m.sender.split('@')[0] + " sana yazdı", {
+                                body: m.text || "Sesli veya görüntülü arama gönderdi",
+                                icon: './assets/icon.png' 
+                            });
+                        }
                     }
                 }
             });
@@ -281,7 +363,10 @@ function listenToMessages() {
         allMsgs.forEach(m => {
             const div = document.createElement('div');
             div.className = `message-bubble ${m.sender === currentUser.email ? 'sent' : 'received'}`;
-            div.innerHTML = m.audioUrl ? `<audio controls src="${m.audioUrl}"></audio>` : m.text;
+            // Ses dosyası varsa ses oynatıcı render et, yoksa text içine link bağlayıcı ekle
+            div.innerHTML = m.audioUrl 
+                ? `<audio controls src="${m.audioUrl}" style="max-width: 200px; height: 36px; border-radius: 50px; outline: none;"></audio>` 
+                : linkify(m.text);
             container.appendChild(div);
         });
         container.scrollTop = container.scrollHeight;
