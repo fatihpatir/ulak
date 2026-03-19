@@ -13,7 +13,7 @@
 </head>
 <body>
 
-    <button id="info-btn" class="glass-btn icon-btn top-right-btn"><i class="ri-information-line"></i></button>
+    <!-- Info button moved to settings -->
 
     <div id="auth-view" class="view active-view">
         <div class="auth-container glass-panel" style="margin: auto;">
@@ -32,7 +32,7 @@
         <header class="app-header glass-header">
             <div class="header-content w-full" style="display: flex; justify-content: space-between; align-items: center;">
                 <h2 class="app-title">Sohbetler</h2>
-                <div style="display: flex; align-items: center; gap: 0.5rem; background: var(--surface-light); padding: 0.25rem 0.5rem 0.25rem 0.75rem; border-radius: 50px; border: 1px solid var(--glass-border);">
+                <div id="open-settings-btn" style="display: flex; align-items: center; gap: 0.5rem; background: var(--surface-light); padding: 0.25rem 0.5rem 0.25rem 0.75rem; border-radius: 50px; border: 1px solid var(--glass-border); cursor: pointer; transition: all 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='var(--surface-light)'">
                     <span id="user-email-display" class="hide" style="font-size: 0.85rem; color: var(--text-muted);"></span>
                     <img id="user-avatar" class="hide" src="" style="width: 30px; height: 30px; border-radius: 50%; object-fit: cover;">
                 </div>
@@ -49,10 +49,12 @@
     </div>
 
     <div id="chat-detail-view" class="view">
-        <header class="app-header glass-header" style="flex-direction: row;">
+        <header class="app-header glass-header" style="flex-direction: row; align-items: center;">
             <button id="back-to-chats-btn" class="icon-btn"><i class="ri-arrow-left-s-line"></i></button>
-            <div class="header-content" style="flex: 1; margin-left: 1rem;">
-                <h3 id="chat-header-name" class="app-title" style="font-size: 1.2rem;">Yükleniyor...</h3>
+            <img id="current-chat-avatar" src="" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; margin-left: 0.5rem;" class="hide">
+            <div class="header-content" style="flex: 1; margin-left: 0.75rem; display: flex; flex-direction: column; align-items: flex-start;">
+                <h3 id="chat-header-name" class="app-title" style="font-size: 1.15rem; line-height: 1; margin-bottom: 0.2rem;">Yükleniyor...</h3>
+                <span id="chat-header-email" style="font-size: 0.75rem; color: var(--text-muted);"></span>
             </div>
             <button id="start-call-btn" class="icon-btn"><i class="ri-vidicon-line"></i></button>
         </header>
@@ -66,6 +68,30 @@
                 <input type="text" id="message-input" class="modal-input" placeholder="Mesajınızı yazın...">
                 <button id="send-btn" class="icon-btn pulse-glow" style="margin-left: 0.5rem; color: var(--primary);"><i class="ri-send-plane-fill"></i></button>
             </div>
+        </div>
+    </div>
+
+    <div id="settings-view" class="view">
+        <header class="app-header glass-header" style="flex-direction: row;">
+            <button id="back-from-settings-btn" class="icon-btn"><i class="ri-arrow-left-s-line"></i></button>
+            <div class="header-content" style="flex: 1; margin-left: 1rem;">
+                <h3 class="app-title" style="font-size: 1.2rem;">Profil</h3>
+            </div>
+            <button id="info-btn" class="icon-btn"><i class="ri-information-line"></i></button>
+        </header>
+        <div style="padding: 2rem 1.5rem; display: flex; flex-direction: column; align-items: center; gap: 1.5rem;">
+            <img id="settings-avatar" src="" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 3px solid var(--primary); box-shadow: 0 4px 20px rgba(59, 130, 246, 0.4);">
+            
+            <div class="w-full">
+                <label style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem; display: block; margin-left: 0.5rem;">Görünür İsim (Sohbetlerde gözüken)</label>
+                <div class="input-group">
+                    <i class="ri-user-smile-line input-icon"></i>
+                    <input type="text" id="settings-name-input" class="modal-input" placeholder="Adınızı girin...">
+                </div>
+            </div>
+            
+            <button id="enable-notifications-btn" class="primary-btn w-full hide" style="justify-content: center; background: linear-gradient(135deg, #10b981, #059669); margin-top: 0.5rem;"><i class="ri-notification-3-line"></i> Bildirimlere İzin Ver</button>
+            <button id="save-settings-btn" class="primary-btn w-full pulse-glow" style="justify-content: center; margin-top: 1rem;"><i class="ri-save-line"></i> Kaydet</button>
         </div>
     </div>
 

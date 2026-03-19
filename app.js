@@ -1,7 +1,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
-import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, setDoc, where } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, setDoc, where, getDoc } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-storage.js";
+import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-messaging.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyB3HwVPpJ2Qz2Su5s7swqf5_55ZrsqzB5E",
@@ -17,11 +18,20 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
 const provider = new GoogleAuthProvider();
+const messaging = getMessaging(app);
 
 // Elementler
-const views = { auth: 'auth-view', app: 'app-view', detail: 'chat-detail-view' };
+const views = { auth: 'auth-view', app: 'app-view', detail: 'chat-detail-view', settings: 'settings-view' };
 let currentUser = null;
 let currentChatId = null;
+const userCache = {}; // E-posta adresine karşılık isimleri tutmak için
+
+// Service Worker (PWA) Kaydı (Ana Ekrana Ekleme için şart)
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => console.log('Service Worker başarıyla kaydedildi.', reg.scope))
+      .catch(err => console.error('Service Worker kayıt hatası:', err));
+}
 
 function switchView(id) {
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active-view'));
@@ -35,15 +45,28 @@ onAuthStateChanged(auth, (user) => {
         document.getElementById('user-avatar').src = user.photoURL;
         document.getElementById('user-avatar').classList.remove('hide');
         
-        // Kullanıcı e-postasını başlığa yazdır
-        document.getElementById('user-email-display').textContent = user.email;
-        document.getElementById('user-email-display').classList.remove('hide');
+        // Google fotoğrafını veritabanına da kopyala (Görüntülenebilmesi için)
+        setDoc(doc(db, 'users', currentUser.email), { photoURL: user.photoURL }, { merge: true });
+        
+        // Profil ismini çek
+        getDoc(doc(db, 'users', currentUser.email)).then(snap => {
+            if(snap.exists() && snap.data().displayName) {
+                currentUser.displayNameCustom = snap.data().displayName;
+                document.getElementById('user-email-display').textContent = snap.data().displayName;
+            } else {
+                document.getElementById('user-email-display').textContent = user.email.split('@')[0]; // İsmi yoksa e-postayı kırp
+            }
+        });
         
         switchView(views.app);
         
-        // Uygulama açıldığında tarayıcı bildirim izni iste
-        if ("Notification" in window && Notification.permission === "default") {
-            Notification.requestPermission();
+        // PWA'larda ve modern tarayıcılarda izinler genellikle KULLANICI TIKLAMASI gerektirir.
+        // Bu yüzden sessizce istemek yerine, butonu aktifleştir.
+        if ("Notification" in window && Notification.permission !== "granted") {
+            document.getElementById('enable-notifications-btn').classList.remove('hide');
+        } else if ("Notification" in window && Notification.permission === "granted") {
+            // Zaten izin verilmişse token'ı güncelle
+            requestFirebaseToken();
         }
         
         listenToChats();
@@ -51,6 +74,19 @@ onAuthStateChanged(auth, (user) => {
         switchView(views.auth);
     }
 });
+
+// Bildirim izin ve Token işlemi (Ayrı fonksiyon, tıklamayla da tetiklenebilir)
+function requestFirebaseToken() {
+    getToken(messaging, { 
+        vapidKey: 'BL8e0LxDTtbuiyjv2hxbmWVlYXkUka8KXKVI5loqqNmqSjEtKPYq5Iqwwhf8LDwTZPr9msrL95HG0TAKIDCjinI' 
+    }).then((token) => {
+        if (token) {
+            console.log("Cihaz Token'ı Alındı:", token);
+            setDoc(doc(db, 'users', currentUser.email), { fcmToken: token }, { merge: true });
+            document.getElementById('enable-notifications-btn').classList.add('hide'); // Butonu gizle
+        }
+    }).catch(console.error);
+}
 
 document.getElementById('google-login-btn').onclick = () => signInWithPopup(auth, provider);
 
@@ -74,16 +110,55 @@ function listenToChats() {
             const other = d.data().users.find(u => u !== currentUser.email);
             const li = document.createElement('li');
             li.className = 'chat-item glass-panel';
-            li.innerHTML = `<b>${other}</b>`;
+            li.innerHTML = `<span style="padding: 1rem;">Yükleniyor...</span>`;
             li.onclick = () => openChat(other);
             list.appendChild(li);
+            
+            // İsmi ve resmi arka planda çek ve güncelle
+            getUserProfile(other).then(profile => {
+                li.style.display = 'flex';
+                li.style.alignItems = 'center';
+                li.style.gap = '1rem';
+                li.style.padding = '0.75rem 1rem';
+                li.style.cursor = 'pointer';
+                li.innerHTML = `
+                    <img src="${profile.photoURL || 'https://ui-avatars.com/api/?name='+profile.name+'&background=random'}" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover; border: 1px solid var(--glass-border);">
+                    <div style="flex: 1; overflow: hidden;">
+                        <span style="font-size: 1.1rem; font-weight: 600; color: var(--text-main); display: block; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${profile.name}</span>
+                        <span style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-top: 0.2rem; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${other}</span>
+                    </div>
+                `;
+                li.onclick = () => openChat(other, profile);
+            });
         });
     });
 }
 
-function openChat(email) {
+// E-posta adresinden profil ismini ve resmini getiren fonksiyon
+async function getUserProfile(email) {
+    if (userCache[email]) return userCache[email];
+    try {
+        const snap = await getDoc(doc(db, 'users', email));
+        if (snap.exists()) {
+            const data = snap.data();
+            const profile = { name: data.displayName || email.split('@')[0], photoURL: data.photoURL || null };
+            userCache[email] = profile;
+            return profile;
+        }
+    } catch(e) { console.error(e); }
+    return { name: email.split('@')[0], photoURL: null };
+}
+
+function openChat(email, profile = null) {
     currentChatId = [currentUser.email, email].sort().join('_');
-    document.getElementById('chat-header-name').textContent = email;
+    const nameToDisplay = profile ? profile.name : email.split('@')[0];
+    const photoToDisplay = profile && profile.photoURL ? profile.photoURL : 'https://ui-avatars.com/api/?name='+nameToDisplay+'&background=random';
+    
+    document.getElementById('chat-header-name').textContent = nameToDisplay;
+    document.getElementById('chat-header-email').textContent = email;
+    document.getElementById('current-chat-avatar').src = photoToDisplay;
+    document.getElementById('current-chat-avatar').classList.remove('hide');
+    
     switchView(views.detail);
     listenToMessages();
 }
@@ -93,13 +168,82 @@ document.getElementById('back-to-chats-btn').onclick = () => switchView(views.ap
 // Mesajlaşma
 async function sendMsg(text, url = null) {
     if(!text && !url) return;
+    
+    // 1. Veritabanına mesajı kaydet
     await addDoc(collection(db, 'messages'), { chatId: currentChatId, sender: currentUser.email, text, audioUrl: url, createdAt: serverTimestamp() });
+    
+    // 2. Kapalıyken (Uygulama arka plandayken) "Gerçek" bildirim göndermek için Vercel Sunucusunu (Postacıyı) Çağır!
+    try {
+        // Karşı tarafın epostasını sohbet idsinden bul
+        const otherUserEmail = currentChatId.split('_').find(e => e !== currentUser.email);
+        
+        // Veritabanından karşı tarafın kayıtlı cihaz kimliğini (Token) çek
+        const snap = await getDoc(doc(db, 'users', otherUserEmail));
+        if (snap.exists() && snap.data().fcmToken) {
+            const receiverToken = snap.data().fcmToken;
+            
+            // Postacıya bilgileri paketleyip ilet (Netlify Yolu)
+            fetch('/.netlify/functions/sendNotification', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    token: receiverToken,
+                    title: currentUser.displayNameCustom || currentUser.email.split('@')[0],
+                    body: text || 'Sana bir resimli/sesli mesaj gönderdi.'
+                })
+            }).catch(e => console.error("Postacı çağrısı başarısız:", e));
+        }
+    } catch(err) {
+        console.error("Bildirim gönderme sürecinde hata:", err);
+    }
 }
 
 document.getElementById('send-btn').onclick = () => {
     const input = document.getElementById('message-input');
     sendMsg(input.value);
     input.value = '';
+};
+
+// Ayarlar Sayfası İşlemleri
+document.getElementById('open-settings-btn').onclick = () => {
+    switchView(views.settings);
+    document.getElementById('settings-avatar').src = currentUser.photoURL;
+    document.getElementById('settings-name-input').value = currentUser.displayNameCustom || currentUser.email.split('@')[0];
+    // Ayarlar sekmesine girince, eğer bildirim kapalıysa butonu tekrar garanti olsun diye göster
+    if ("Notification" in window && Notification.permission !== "granted") {
+        document.getElementById('enable-notifications-btn').classList.remove('hide');
+    }
+};
+
+document.getElementById('enable-notifications-btn').onclick = () => {
+    if ("Notification" in window) {
+        Notification.requestPermission().then((permission) => {
+            if (permission === 'granted') {
+                requestFirebaseToken();
+                alert("Bildirimler başarıyla aktifleştirildi!");
+            } else {
+                alert("Bildirim izni reddedildi. Tarayıcı ayarlarınızdan izin vermeniz gerekebilir.");
+            }
+        });
+    }
+};
+
+document.getElementById('back-from-settings-btn').onclick = () => switchView(views.app);
+
+document.getElementById('save-settings-btn').onclick = async () => {
+    const btn = document.getElementById('save-settings-btn');
+    const newName = document.getElementById('settings-name-input').value.trim();
+    if (newName) {
+        btn.innerHTML = `<i class="ri-loader-4-line ri-spin"></i> Kaydediliyor...`;
+        await setDoc(doc(db, 'users', currentUser.email), { displayName: newName }, { merge: true });
+        currentUser.displayNameCustom = newName;
+        document.getElementById('user-email-display').textContent = newName;
+        btn.innerHTML = `<i class="ri-check-line"></i> Kaydedildi!`;
+        setTimeout(() => {
+            btn.innerHTML = `<i class="ri-save-line"></i> Kaydet`;
+            switchView(views.app);
+        }, 1000);
+    }
 };
 
 function listenToMessages() {
