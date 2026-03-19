@@ -182,8 +182,8 @@ async function sendMsg(text, url = null) {
         if (snap.exists() && snap.data().fcmToken) {
             const receiverToken = snap.data().fcmToken;
             
-            // Postacıya bilgileri paketleyip ilet (Netlify Yolu)
-            fetch('/.netlify/functions/sendNotification', {
+            // Postacıya bilgileri paketleyip ilet (Netlify Tam URL)
+            fetch('https://exquisite-squirrel-b10f4e.netlify.app/.netlify/functions/sendNotification', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -293,3 +293,4 @@ document.querySelectorAll('.close-modal-btn').forEach(btn => {
     btn.onclick = () => document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open'));
 });
 document.getElementById('info-btn').onclick = () => document.getElementById('info-modal').classList.add('open');
+document.getElementById('auth-info-btn').onclick = () => document.getElementById('info-modal').classList.add('open');

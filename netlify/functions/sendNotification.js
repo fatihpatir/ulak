@@ -24,10 +24,23 @@ if (!admin.apps.length) {
 }
 
 exports.handler = async function (event, context) {
+  // CORS (Çapraz Site) İzinleri (Github ile Netlify'ın sorunsuz konuşması için eklendi)
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'OPTIONS, POST'
+  };
+
+  // Uç kontrol isteklerine (OPTIONS) anında yeşil ışık yak
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 200, headers, body: '' };
+  }
+
   // Sadece POST isteklerini kabul ediyoruz
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
+      headers,
       body: JSON.stringify({ error: 'Sadece POST metoduna izin verilir' })
     };
   }
@@ -40,6 +53,7 @@ exports.handler = async function (event, context) {
     if (!token) {
       return {
         statusCode: 400,
+        headers,
         body: JSON.stringify({ error: 'FCM Token eksik' })
       };
     }
@@ -58,6 +72,7 @@ exports.handler = async function (event, context) {
     
     return {
       statusCode: 200,
+      headers,
       body: JSON.stringify({ success: true, messageId: response })
     };
 
@@ -65,6 +80,7 @@ exports.handler = async function (event, context) {
     console.error('Bildirim gönderme hatası:', error);
     return {
       statusCode: 500,
+      headers,
       body: JSON.stringify({ error: 'Bildirim gönderilemedi', details: error.message })
     };
   }
