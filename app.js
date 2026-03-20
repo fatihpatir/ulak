@@ -31,17 +31,7 @@ if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('./firebase-messaging-sw.js')
           .then(reg => {
-              console.log('Service Worker Kayıtlı:', reg.scope);
-              // Eğer güncelleme varsa hemen aktifleştir
-              reg.onupdatefound = () => {
-                const installingWorker = reg.installing;
-                installingWorker.onstatechange = () => {
-                  if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                    // Yeni sürüm geldiğinde sayfayı sessizce yenilemeyi düşünebilirsin
-                    console.log('Yeni Service Worker sürümü yüklendi.');
-                  }
-                };
-              };
+              console.log('SW Kayıtlı');
           })
           .catch(err => console.error('SW Hata:', err));
     });
@@ -448,7 +438,6 @@ document.getElementById('test-notifications-btn').onclick = async () => {
     
     try {
         // 1. Token'ı tazele
-
         await requestFirebaseToken();
         
         // 2. Kendi cihazımıza bir test bildirimi fırlat (Netlify üzerinden)
