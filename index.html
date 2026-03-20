@@ -51,8 +51,8 @@
         <button id="new-chat-fab" class="fab"><i class="ri-add-line"></i></button>
     </div>
 
-    <div id="chat-detail-view" class="view">
-        <header class="app-header glass-header" style="flex-direction: row; align-items: center;">
+    <div id="chat-detail-view" class="view" style="height: 100vh; display: none; flex-direction: column;">
+        <header class="app-header glass-header" style="flex-direction: row; align-items: center; flex-shrink: 0;">
             <button id="back-to-chats-btn" class="icon-btn"><i class="ri-arrow-left-s-line"></i></button>
             <img id="current-chat-avatar" src="" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; margin-left: 0.5rem;" class="hide">
             <div class="header-content" style="flex: 1; margin-left: 0.75rem; display: flex; flex-direction: column; align-items: flex-start;">
@@ -65,11 +65,11 @@
                <button id="delete-chat-btn" class="icon-btn" style="color: #ef4444;"><i class="ri-delete-bin-7-line"></i></button>
             </div>
         </header>
-        <div id="chat-messages" class="chat-messages-container" style="flex: 1; padding: 1rem; padding-bottom: 80px; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem;"></div>
+        <div id="chat-messages" class="chat-messages-container" style="flex: 1; padding: 1rem; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem;"></div>
         
         <div id="recording-indicator" class="recording-bar hide">Kayıt yapılıyor...</div>
         
-        <div class="app-footer">
+        <div class="app-footer" style="flex-shrink: 0;">
             <div class="input-group">
                 <button id="mic-btn" class="icon-btn" style="margin-right: 0.5rem;"><i class="ri-mic-fill"></i></button>
                 <input type="text" id="message-input" class="modal-input" placeholder="Mesajınızı yazın...">
@@ -102,8 +102,12 @@
                 <span id="settings-email-display" style="font-size: 0.95rem; font-weight: 500;"></span>
             </div>
             
-            <button id="enable-notifications-btn" class="primary-btn w-full hide" style="justify-content: center; background: linear-gradient(135deg, #10b981, #059669); margin-top: 0.5rem;"><i class="ri-notification-3-line"></i> Bildirimlere İzin Ver</button>
-            <button id="save-settings-btn" class="primary-btn w-full pulse-glow" style="justify-content: center; margin-top: 1rem;"><i class="ri-save-line"></i> Kaydet</button>
+            <div style="display: flex; gap: 0.5rem; width: 100%;">
+                <button id="enable-notifications-btn" class="primary-btn hide" style="flex: 1; justify-content: center; background: linear-gradient(135deg, #10b981, #059669);"><i class="ri-notification-3-line"></i> İzin Ver</button>
+                <button id="test-notifications-btn" class="primary-btn" style="flex: 1; justify-content: center; background: var(--surface-light); border: 1px solid var(--glass-border);"><i class="ri-shield-check-line"></i> Test Et</button>
+            </div>
+            
+            <button id="save-settings-btn" class="primary-btn w-full pulse-glow" style="justify-content: center; margin-top: 0.5rem;"><i class="ri-save-line"></i> Kaydet</button>
         </div>
     </div>
 

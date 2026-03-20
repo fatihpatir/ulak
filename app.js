@@ -29,11 +29,21 @@ const userCache = {}; // E-posta adresine karşılık isimleri tutmak için
 // Service Worker (PWA) Kaydı (Ana Ekrana Ekleme için şart)
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./firebase-messaging-sw.js') // Öncelikli SW bu
+        navigator.serviceWorker.register('./firebase-messaging-sw.js')
           .then(reg => {
-              console.log('Firebase Service Worker başarıyla kaydedildi.', reg.scope);
+              console.log('Service Worker Kayıtlı:', reg.scope);
+              // Eğer güncelleme varsa hemen aktifleştir
+              reg.onupdatefound = () => {
+                const installingWorker = reg.installing;
+                installingWorker.onstatechange = () => {
+                  if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    // Yeni sürüm geldiğinde sayfayı sessizce yenilemeyi düşünebilirsin
+                    console.log('Yeni Service Worker sürümü yüklendi.');
+                  }
+                };
+              };
           })
-          .catch(err => console.error('Service Worker kayıt hatası:', err));
+          .catch(err => console.error('SW Hata:', err));
     });
 }
 
@@ -70,11 +80,12 @@ onAuthStateChanged(auth, (user) => {
         
         // PWA'larda ve modern tarayıcılarda izinler genellikle KULLANICI TIKLAMASI gerektirir.
         // Bu yüzden sessizce istemek yerine, butonu aktifleştir.
-        if ("Notification" in window && Notification.permission !== "granted") {
+        // Bildirimleri her giriş ve ayar açılışında tazeleyebiliriz
+        if ("Notification" in window) {
             document.getElementById('enable-notifications-btn').classList.remove('hide');
-        } else if ("Notification" in window && Notification.permission === "granted") {
-            // Zaten izin verilmişse token'ı güncelle
-            requestFirebaseToken();
+            if (Notification.permission === "granted") {
+                requestFirebaseToken();
+            }
         }
         
         listenToChats();
@@ -91,7 +102,6 @@ function requestFirebaseToken() {
         if (token) {
             console.log("Cihaz Token'ı Alındı:", token);
             setDoc(doc(db, 'users', currentUser.email), { fcmToken: token }, { merge: true });
-            document.getElementById('enable-notifications-btn').classList.add('hide'); // Butonu gizle
         }
     }).catch(console.error);
 }
@@ -388,10 +398,8 @@ document.getElementById('open-settings-btn').onclick = () => {
     document.getElementById('settings-avatar').src = currentUser.photoURL;
     document.getElementById('settings-email-display').textContent = currentUser.email;
     document.getElementById('settings-name-input').value = currentUser.displayNameCustom || currentUser.email.split('@')[0];
-    // Ayarlar sekmesine girince, eğer bildirim kapalıysa butonu tekrar garanti olsun diye göster
-    if ("Notification" in window && Notification.permission !== "granted") {
-        document.getElementById('enable-notifications-btn').classList.remove('hide');
-    }
+    // Ayarlar sekmesinde bildirim butonu her zaman açık kalsın (Tazeleme için)
+    document.getElementById('enable-notifications-btn').classList.remove('hide');
 };
 
 document.getElementById('enable-notifications-btn').onclick = () => {
@@ -409,19 +417,46 @@ document.getElementById('enable-notifications-btn').onclick = () => {
 
 document.getElementById('back-from-settings-btn').onclick = () => switchView(views.app);
 
-document.getElementById('save-settings-btn').onclick = async () => {
-    const btn = document.getElementById('save-settings-btn');
-    const newName = document.getElementById('settings-name-input').value.trim();
-    if (newName) {
-        btn.innerHTML = `<i class="ri-loader-4-line ri-spin"></i> Kaydediliyor...`;
-        await setDoc(doc(db, 'users', currentUser.email), { displayName: newName }, { merge: true });
-        currentUser.displayNameCustom = newName;
-        document.getElementById('user-email-display').textContent = newName;
-        btn.innerHTML = `<i class="ri-check-line"></i> Kaydedildi!`;
-        setTimeout(() => {
-            btn.innerHTML = `<i class="ri-save-line"></i> Kaydet`;
-            switchView(views.app);
-        }, 1000);
+    }
+};
+
+// --- BİLDİRİM TEST ETME OPERASYONU ---
+document.getElementById('test-notifications-btn').onclick = async () => {
+    const btn = document.getElementById('test-notifications-btn');
+    const originalHTML = btn.innerHTML;
+    btn.innerHTML = `<i class="ri-loader-4-line ri-spin"></i> Test...`;
+    
+    try {
+        // 1. Token'ı tazele
+        await requestFirebaseToken();
+        
+        // 2. Kendi cihazımıza bir test bildirimi fırlat (Netlify üzerinden)
+        const userSnap = await getDoc(doc(db, 'users', currentUser.email));
+        if (userSnap.exists() && userSnap.data().fcmToken) {
+            const myToken = userSnap.data().fcmToken;
+            
+            const response = await fetch('https://exquisite-squirrel-b10f4e.netlify.app/.netlify/functions/sendNotification', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    token: myToken,
+                    title: "ULAK Test Bildirimi ✅",
+                    body: "Harika! Bildirimlerin tıkır tıkır çalışıyor şanına layık!"
+                })
+            });
+            
+            if(response.ok) {
+                btn.innerHTML = `<i class="ri-check-line"></i> Başarılı!`;
+                setTimeout(() => btn.innerHTML = originalHTML, 2000);
+            } else {
+                throw new Error("Sunucu hatası");
+            }
+        }
+    } catch(e) {
+        console.error("Test hatası:", e);
+        btn.innerHTML = `<i class="ri-error-warning-line"></i> Hata`;
+        setTimeout(() => btn.innerHTML = originalHTML, 2000);
+        alert("Bildirim testi başarısız oldu kral. İzinleri kontrol et.");
     }
 };
 

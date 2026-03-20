@@ -1,6 +1,15 @@
 importScripts("https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/10.9.0/firebase-messaging-compat.js");
 
+// Service Worker güncellendiğinde bekletmeden hemen aktifleştir (Önemli!)
+self.addEventListener('install', (event) => {
+    self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+    event.waitUntil(clients.claim());
+});
+
 const firebaseConfig = {
   apiKey: "AIzaSyB3HwVPpJ2Qz2Su5s7swqf5_55ZrsqzB5E",
   authDomain: "ulak-b4965.firebaseapp.com",
