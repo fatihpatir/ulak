@@ -457,6 +457,13 @@ button {
 }
 
 .chat-messages-container {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
     scrollbar-width: thin;
     scrollbar-color: var(--glass-border) transparent;
 }
