@@ -178,11 +178,11 @@ function listenToChats() {
             if (data.type === 'group') {
                 // GRUP GÖRÜNÜMÜ
                 li.innerHTML = `
-                    <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; border: 1px solid var(--glass-border);">
+                    <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; border: 1px solid var(--glass-border); flex-shrink: 0;">
                         <i class="ri-team-line" style="color: white;"></i>
                     </div>
                     <div style="flex: 1; overflow: hidden;">
-                        <span style="font-size: 1.1rem; font-weight: 600; color: var(--text-main); display: block;">${data.groupName}</span>
+                        <span style="font-size: 1.1rem; font-weight: 600; color: var(--text-main); display: block; white-space: nowrap; text-overflow: ellipsis; overflow: hidden;">${data.groupName}</span>
                         <span style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-top: 0.2rem;">${data.users.length} Katılımcı</span>
                     </div>
                 `;
@@ -190,13 +190,20 @@ function listenToChats() {
             } else {
                 // BİREYSEL GÖRÜNÜM
                 const other = data.users.find(u => u !== currentUser.email);
-                li.innerHTML = `<span style="padding: 1rem;">Yükleniyor...</span>`;
+                li.innerHTML = `
+                    <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--surface-light); animate: pulse 1s infinite; flex-shrink: 0;"></div>
+                    <div style="flex: 1;">
+                        <div style="height: 12px; width: 60%; background: var(--surface-light); border-radius: 4px; margin-bottom: 8px;"></div>
+                        <div style="height: 8px; width: 40%; background: var(--surface-light); border-radius: 4px;"></div>
+                    </div>
+                `;
+                
                 getUserProfile(other).then(profile => {
                     li.innerHTML = `
-                        <img src="${profile.photoURL || 'https://ui-avatars.com/api/?name='+profile.name+'&background=random'}" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover; border: 1px solid var(--glass-border);">
+                        <img src="${profile.photoURL || 'https://ui-avatars.com/api/?name='+profile.name+'&background=random'}" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover; border: 1px solid var(--glass-border); flex-shrink: 0;">
                         <div style="flex: 1; overflow: hidden;">
-                            <span style="font-size: 1.1rem; font-weight: 600; color: var(--text-main); display: block;">${profile.name}</span>
-                            <span style="font-size: 0.8rem; color: var(--text-muted); display: block;">${other}</span>
+                            <span style="font-size: 1.1rem; font-weight: 600; color: var(--text-main); display: block; white-space: nowrap; text-overflow: ellipsis; overflow: hidden;">${profile.name}</span>
+                            <span style="font-size: 0.8rem; color: var(--text-muted); display: block; white-space: nowrap; text-overflow: ellipsis; overflow: hidden;">${other}</span>
                         </div>
                     `;
                     li.onclick = () => openChat(other, profile, 'personal');
