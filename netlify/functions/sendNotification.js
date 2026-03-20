@@ -64,22 +64,6 @@ exports.handler = async function (event, context) {
         title: title || 'Yeni Mesaj',
         body: body || 'Sana bir mesaj gönderdi.',
       },
-      webpush: {
-        headers: {
-          Urgency: 'high',
-          TTL: '86400',
-        },
-        notification: {
-          title: title || 'Yeni Mesaj',
-          body: body || 'Sana bir mesaj gönderdi.',
-          icon: 'https://fatihpatir.github.io/ulak/assets/icon.png',
-          badge: 'https://fatihpatir.github.io/ulak/assets/icon.png',
-          vibrate: [200, 100, 200],
-        },
-        fcmOptions: {
-          link: 'https://fatihpatir.github.io/ulak/',
-        },
-      },
       token: token,
     };
 
