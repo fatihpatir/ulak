@@ -49,13 +49,13 @@ input, textarea {
 
 /* --- Utilities --- */
 .view {
-    display: none;
+    display: none !important;
     flex: 1;
     width: 100%;
     animation: fadeIn 0.4s ease forwards;
 }
 .view.active-view {
-    display: flex;
+    display: flex !important;
     flex-direction: column;
 }
 
@@ -450,6 +450,12 @@ button {
 }
 
 /* Chat Detail View */
+.chat-detail-view {
+    height: 100vh;
+    max-height: 100vh;
+    overflow: hidden;
+}
+
 .chat-messages-container {
     scrollbar-width: thin;
     scrollbar-color: var(--glass-border) transparent;
