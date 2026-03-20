@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
-import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, setDoc, where, getDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, setDoc, where, getDoc, deleteDoc, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-storage.js";
 import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-messaging.js";
 
@@ -24,7 +24,18 @@ const messaging = getMessaging(app);
 const views = { auth: 'auth-view', app: 'app-view', detail: 'chat-detail-view', settings: 'settings-view' };
 let currentUser = null;
 let currentChatId = null;
+let typingTimeout = null;
 const userCache = {}; // E-posta adresine karşılık isimleri tutmak için
+
+// Bildirim uyarı toast
+window.addEventListener('load', () => {
+    const toast = document.getElementById('notif-warning-toast');
+    if(toast) {
+        toast.classList.remove('hide');
+        setTimeout(() => toast.style.opacity = '0', 5000);
+        setTimeout(() => toast.classList.add('hide'), 5400);
+    }
+});
 
 // Service Worker (PWA) Kaydı (Ana Ekrana Ekleme için şart)
 if ('serviceWorker' in navigator) {
@@ -73,8 +84,14 @@ onAuthStateChanged(auth, (user) => {
         // Bildirimleri her giriş ve ayar açılışında tazeleyebiliriz
         if ("Notification" in window) {
             document.getElementById('enable-notifications-btn').classList.remove('hide');
+            const stat = document.getElementById('notification-status');
             if (Notification.permission === "granted") {
                 requestFirebaseToken();
+                stat.className = 'notif-status active';
+                stat.innerHTML = '<i class="ri-checkbox-circle-line"></i> Bildirimler Aktif';
+            } else {
+                stat.className = 'notif-status inactive';
+                stat.innerHTML = '<i class="ri-error-warning-line"></i> Bildirim İzni Bekleniyor';
             }
         }
         
@@ -83,6 +100,11 @@ onAuthStateChanged(auth, (user) => {
         switchView(views.auth);
     }
 });
+
+// Çıkış Yap Butonu
+document.getElementById('signout-btn').onclick = () => {
+    signOut(auth).then(() => window.location.reload());
+};
 
 // Bildirim izin ve Token işlemi (Ayrı fonksiyon, tıklamayla da tetiklenebilir)
 function requestFirebaseToken() {
@@ -157,6 +179,25 @@ function listenToChats() {
         s.forEach(d => {
             const data = d.data();
             const chatId = d.id;
+            
+            // Okunmamış ve Önizleme hesaplaması
+            const lastViewed = localStorage.getItem('lastViewed_' + chatId) || 0;
+            const isUnread = data.lastTime && data.lastTime.toMillis() > parseInt(lastViewed) && data.lastSender !== currentUser.email;
+            const isTyping = data.typing && data.typing.find(u => u !== currentUser.email);
+            const msgPreview = isTyping ? `<span style="color:var(--accent);font-style:italic;">Yazıyor...</span>` : (data.lastMsg || (data.lastTime ? 'Sohbet başladı' : ''));
+            const badgeHtml = isUnread ? `<div class="unread-badge"></div>` : '';
+
+            // Seçili sohbetin typing barını güncelle
+            if (chatId === currentChatId) {
+                const tb = document.getElementById('typing-indicator-bar');
+                if (isTyping) {
+                    tb.textContent = 'Karşı taraf yazıyor...';
+                    tb.classList.remove('hide');
+                } else {
+                    tb.classList.add('hide');
+                }
+            }
+
             const li = document.createElement('li');
             li.className = 'chat-item glass-panel';
             li.style.display = 'flex';
@@ -166,19 +207,20 @@ function listenToChats() {
             li.style.cursor = 'pointer';
 
             if (data.type === 'group') {
-                // GRUP GÖRÜNÜMÜ
                 li.innerHTML = `
                     <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; border: 1px solid var(--glass-border); flex-shrink: 0;">
                         <i class="ri-team-line" style="color: white;"></i>
                     </div>
                     <div style="flex: 1; overflow: hidden;">
-                        <span style="font-size: 1.1rem; font-weight: 600; color: var(--text-main); display: block; white-space: nowrap; text-overflow: ellipsis; overflow: hidden;">${data.groupName}</span>
-                        <span style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-top: 0.2rem;">${data.users.length} Katılımcı</span>
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span style="font-size: 1.05rem; font-weight: 600; color: var(--text-main); white-space: nowrap; text-overflow: ellipsis; overflow: hidden;">${data.groupName}</span>
+                            ${badgeHtml}
+                        </div>
+                        <span class="last-msg-preview">${msgPreview}</span>
                     </div>
                 `;
                 li.onclick = () => openChat(chatId, { name: data.groupName, isGroup: true }, 'group');
             } else {
-                // BİREYSEL GÖRÜNÜM (Kendisiyle başlatmışsa da fallback)
                 const other = data.users.find(u => u !== currentUser.email) || currentUser.email;
                 li.innerHTML = `
                     <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--surface-light); animate: pulse 1s infinite; flex-shrink: 0;"></div>
@@ -192,8 +234,11 @@ function listenToChats() {
                     li.innerHTML = `
                         <img src="${profile.photoURL || 'https://ui-avatars.com/api/?name='+profile.name+'&background=random'}" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover; border: 1px solid var(--glass-border); flex-shrink: 0;">
                         <div style="flex: 1; overflow: hidden;">
-                            <span style="font-size: 1.1rem; font-weight: 600; color: var(--text-main); display: block; white-space: nowrap; text-overflow: ellipsis; overflow: hidden;">${profile.name}</span>
-                            <span style="font-size: 0.8rem; color: var(--text-muted); display: block; white-space: nowrap; text-overflow: ellipsis; overflow: hidden;">${other}</span>
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <span style="font-size: 1.05rem; font-weight: 600; color: var(--text-main); white-space: nowrap; text-overflow: ellipsis; overflow: hidden;">${profile.name}</span>
+                                ${badgeHtml}
+                            </div>
+                            <span class="last-msg-preview">${msgPreview}</span>
                         </div>
                     `;
                     li.onclick = () => openChat(other, profile, 'personal');
@@ -234,6 +279,7 @@ function openChat(targetId, profile = null, type = 'personal') {
     }
     
     document.getElementById('current-chat-avatar').classList.remove('hide');
+    localStorage.setItem('lastViewed_' + currentChatId, Date.now()); // Sohbet açıldığında okundu işaretle
     switchView(views.detail);
     listenToMessages(type);
 }
@@ -284,8 +330,13 @@ function linkify(text) {
 async function sendMsg(text, url = null) {
     if(!text && !url) return;
     
-    // Sohbetin 'son görülme/güncellenme' zamanını güncelle ki bildirim tetiklensin
-    setDoc(doc(db, 'chats', currentChatId), { lastTime: serverTimestamp() }, { merge: true });
+    // Sohbetin özetini ve son tarihini güncelle
+    setDoc(doc(db, 'chats', currentChatId), { 
+        lastTime: serverTimestamp(),
+        lastMsg: text ? text.substring(0, 30) : '🎵 Sesli Mesaj',
+        lastSender: currentUser.email,
+        typing: arrayRemove(currentUser.email)
+    }, { merge: true });
 
     // 1. Veritabanına mesajı kaydet
     await addDoc(collection(db, 'messages'), { 
@@ -330,9 +381,25 @@ async function sendMsg(text, url = null) {
 
 document.getElementById('send-btn').onclick = () => {
     const input = document.getElementById('message-input');
-    sendMsg(input.value);
+    sendMsg(input.value.trim());
     input.value = '';
+    clearTimeout(typingTimeout);
+    if(currentChatId) setDoc(doc(db, 'chats', currentChatId), { typing: arrayRemove(currentUser.email) }, { merge: true });
 };
+
+const messageInput = document.getElementById('message-input');
+messageInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') document.getElementById('send-btn').click();
+});
+
+messageInput.addEventListener('input', () => {
+    if(!currentChatId || !messageInput.value) return;
+    setDoc(doc(db, 'chats', currentChatId), { typing: arrayUnion(currentUser.email) }, { merge: true });
+    clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(() => {
+        setDoc(doc(db, 'chats', currentChatId), { typing: arrayRemove(currentUser.email) }, { merge: true });
+    }, 2000);
+});
 
 // Bas Konuş (Ses Kaydetme) İşlemleri
 let mediaRecorder;
@@ -406,8 +473,14 @@ document.getElementById('enable-notifications-btn').onclick = () => {
         Notification.requestPermission().then((permission) => {
             if (permission === 'granted') {
                 requestFirebaseToken();
+                const stat = document.getElementById('notification-status');
+                stat.className = 'notif-status active';
+                stat.innerHTML = '<i class="ri-checkbox-circle-line"></i> Bildirimler Aktif';
                 alert("Bildirimler başarıyla aktifleştirildi!");
             } else {
+                const stat = document.getElementById('notification-status');
+                stat.className = 'notif-status inactive';
+                stat.innerHTML = '<i class="ri-error-warning-line"></i> Bildirim Reddedildi';
                 alert("Bildirim izni reddedildi. Tarayıcı ayarlarınızdan izin vermeniz gerekebilir.");
             }
         });
@@ -512,11 +585,35 @@ function listenToMessages(chatType = 'personal') {
             return timeA - timeB;
         });
 
+        // Sohbet detayında olduğumuz için unread sıfırlıyoruz
+        localStorage.setItem('lastViewed_' + currentChatId, Date.now());
+
         container.innerHTML = '';
+        let lastDateString = null;
+
         allMsgs.forEach(m => {
             const div = document.createElement('div');
             const isMe = m.sender === currentUser.email;
             div.className = `message-bubble ${isMe ? 'sent' : 'received'}`;
+            
+            // Tarih Ayracı Ekleme
+            const msgDate = m.createdAt ? m.createdAt.toDate() : new Date();
+            const dateStr = msgDate.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+            if (dateStr !== lastDateString) {
+                const divider = document.createElement('div');
+                divider.className = 'date-divider';
+                
+                // Bugünü ve Dünü anlama
+                const today = new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+                const yesterday = new Date(Date.now() - 86400000).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+                
+                if(dateStr === today) divider.textContent = 'Bugün';
+                else if(dateStr === yesterday) divider.textContent = 'Dün';
+                else divider.textContent = dateStr;
+                
+                container.appendChild(divider);
+                lastDateString = dateStr;
+            }
             
             // Mesaj silme özelliği (Sadece kendi mesajlarımız için)
             if (isMe) {
@@ -537,6 +634,10 @@ function listenToMessages(chatType = 'personal') {
             content += m.audioUrl 
                 ? `<audio controls src="${m.audioUrl}" style="max-width: 200px; height: 36px; border-radius: 50px; outline: none;"></audio>` 
                 : linkify(m.text);
+            
+            // Saat formatı
+            const timeStr = m.createdAt ? m.createdAt.toDate().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '';
+            content += `<span class="message-time">${timeStr}</span>`;
             
             div.innerHTML = content;
             container.appendChild(div);
