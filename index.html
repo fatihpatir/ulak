@@ -59,7 +59,11 @@
                 <h3 id="chat-header-name" class="app-title" style="font-size: 1.15rem; line-height: 1; margin-bottom: 0.2rem;">Yükleniyor...</h3>
                 <span id="chat-header-email" style="font-size: 0.75rem; color: var(--text-muted);"></span>
             </div>
-            <button id="start-call-btn" class="icon-btn"><i class="ri-vidicon-line"></i></button>
+            <div class="header-actions" style="display: flex; gap: 0.5rem;">
+               <button id="start-voice-call-btn" class="icon-btn"><i class="ri-phone-line"></i></button>
+               <button id="start-call-btn" class="icon-btn"><i class="ri-vidicon-line"></i></button>
+               <button id="delete-chat-btn" class="icon-btn" style="color: #ef4444;"><i class="ri-delete-bin-7-line"></i></button>
+            </div>
         </header>
         <div id="chat-messages" class="chat-messages-container" style="flex: 1; padding: 1rem; padding-bottom: 80px; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem;"></div>
         
@@ -91,6 +95,11 @@
                     <i class="ri-user-smile-line input-icon"></i>
                     <input type="text" id="settings-name-input" class="modal-input" placeholder="Adınızı girin...">
                 </div>
+            </div>
+
+            <div class="w-full" style="text-align: center; background: var(--surface-light); padding: 0.75rem; border-radius: var(--radius-lg); border: 1px solid var(--glass-border);">
+                <span style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 0.2rem;">Bağlı Hesap</span>
+                <span id="settings-email-display" style="font-size: 0.95rem; font-weight: 500;"></span>
             </div>
             
             <button id="enable-notifications-btn" class="primary-btn w-full hide" style="justify-content: center; background: linear-gradient(135deg, #10b981, #059669); margin-top: 0.5rem;"><i class="ri-notification-3-line"></i> Bildirimlere İzin Ver</button>

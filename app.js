@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
-import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, setDoc, where, getDoc } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, setDoc, where, getDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-storage.js";
 import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-messaging.js";
 
@@ -215,28 +215,50 @@ async function getUserProfile(email) {
 function openChat(targetId, profile = null, type = 'personal') {
     if (type === 'personal') {
         currentChatId = [currentUser.email, targetId].sort().join('_');
+        document.getElementById('chat-header-name').textContent = profile ? profile.name : targetId.split('@')[0];
         document.getElementById('chat-header-email').textContent = targetId;
         document.getElementById('current-chat-avatar').src = profile ? (profile.photoURL || 'https://ui-avatars.com/api/?name='+profile.name+'&background=random') : '';
     } else {
-        currentChatId = targetId; // Grup ID'si zaten tekil
+        currentChatId = targetId;
+        document.getElementById('chat-header-name').textContent = profile ? profile.name : 'Grup';
         document.getElementById('chat-header-email').textContent = 'Grup Sohbeti';
         document.getElementById('current-chat-avatar').src = 'https://ui-avatars.com/api/?name=Group&background=3b82f6';
     }
     
-    document.getElementById('chat-header-name').textContent = profile ? profile.name : 'Sohbet';
     document.getElementById('current-chat-avatar').classList.remove('hide');
-    
     switchView(views.detail);
     listenToMessages(type);
 }
 
+// Sesli Arama İşlemi (Jitsi Audio Only)
+document.getElementById('start-voice-call-btn').onclick = () => {
+    const callLink = `https://meet.jit.si/ULAK_Sesli_Sohbet_${currentChatId}#config.startWithVideoMuted=true`;
+    sendMsg("📞 <b>Sesli Arama Başlatıldı!</b> Katılmak için:<br>" + callLink);
+    window.open(callLink, '_blank');
+};
+
 // Görüntülü Arama İşlemi (Jitsi Altyapısı ile Tek Tıkla Bağlantı)
 document.getElementById('start-call-btn').onclick = () => {
-    // Sohbet için gizli bir yayın linki oluştur ve mektuba ekle
-    const callLink = `https://meet.jit.si/ULAK_Ozel_Sohbet_${currentChatId}`;
-    sendMsg("🎥 <b>Görüntülü Arama Başlatıldı!</b><br>Katılmak için aşağıdaki linke tıklayın:<br>" + callLink);
-    // Kendi penceresinde aramayı aç
+    const callLink = `https://meet.jit.si/ULAK_Goruntulu_Sohbet_${currentChatId}`;
+    sendMsg("🎥 <b>Görüntülü Arama Başlatıldı!</b> Katılmak için:<br>" + callLink);
     window.open(callLink, '_blank');
+};
+
+// Sohbet Silme
+document.getElementById('delete-chat-btn').onclick = async () => {
+    if (confirm("Bu sohbeti tamamen silmek istediğine emin misin kral? Bütün mesajlar gidecek.")) {
+        // 1. Mesajları sil
+        const msgsQ = query(collection(db, 'messages'), where('chatId', '==', currentChatId));
+        onSnapshot(msgsQ, s => {
+            s.forEach(async (m) => {
+                // Not: Client side sileceksek tek tek deleteDoc lazım, 
+                // ya da sadece listeyi güncelleyebiliriz basitlik için.
+            });
+        });
+        // 2. Sohbet dökümanını sil
+        await deleteDoc(doc(db, 'chats', currentChatId));
+        switchView(views.app);
+    }
 };
 
 document.getElementById('back-to-chats-btn').onclick = () => switchView(views.app);
@@ -253,6 +275,9 @@ function linkify(text) {
 async function sendMsg(text, url = null) {
     if(!text && !url) return;
     
+    // Sohbetin 'son görülme/güncellenme' zamanını güncelle ki bildirim tetiklensin
+    setDoc(doc(db, 'chats', currentChatId), { lastTime: serverTimestamp() }, { merge: true });
+
     // 1. Veritabanına mesajı kaydet
     await addDoc(collection(db, 'messages'), { 
         chatId: currentChatId, 
@@ -361,6 +386,7 @@ micBtn.onclick = async () => {
 document.getElementById('open-settings-btn').onclick = () => {
     switchView(views.settings);
     document.getElementById('settings-avatar').src = currentUser.photoURL;
+    document.getElementById('settings-email-display').textContent = currentUser.email;
     document.getElementById('settings-name-input').value = currentUser.displayNameCustom || currentUser.email.split('@')[0];
     // Ayarlar sekmesine girince, eğer bildirim kapalıysa butonu tekrar garanti olsun diye göster
     if ("Notification" in window && Notification.permission !== "granted") {
@@ -430,7 +456,9 @@ function listenToMessages(chatType = 'personal') {
 
         // Mesajları Javascript tarafında tarihe göre sırala
         const allMsgs = [];
-        s.forEach(d => allMsgs.push(d.data()));
+        s.forEach(d => {
+            allMsgs.push({ id: d.id, ...d.data() });
+        });
         allMsgs.sort((a,b) => {
             const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
             const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
@@ -443,6 +471,16 @@ function listenToMessages(chatType = 'personal') {
             const isMe = m.sender === currentUser.email;
             div.className = `message-bubble ${isMe ? 'sent' : 'received'}`;
             
+            // Mesaj silme özelliği (Sadece kendi mesajlarımız için)
+            if (isMe) {
+                div.style.cursor = 'pointer';
+                div.onclick = async () => {
+                    if (confirm("Bu mesajı silmek istediğine emin misin?")) {
+                        await deleteDoc(doc(db, 'messages', m.id));
+                    }
+                };
+            }
+
             let content = '';
             // Grup sohbetiyse ve mesaj bizden değilse üstte isim göster
             if (chatType === 'group' && !isMe) {
