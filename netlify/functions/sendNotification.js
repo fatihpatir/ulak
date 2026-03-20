@@ -60,17 +60,14 @@ exports.handler = async function (event, context) {
 
     // Gönderilecek Push Notification (Bildirim) Şablonu
     const message = {
-      // Tüm platformlar için temel bildirim
       notification: {
         title: title || 'Yeni Mesaj',
         body: body || 'Sana bir mesaj gönderdi.',
       },
-
-      // Web Push (tarayıcı/PWA) ayarları - iOS dahil
       webpush: {
         headers: {
-          Urgency: 'high',   // iOS PWA'yı uyandırmak için kritik
-          TTL: '86400',      // 24 saat içinde teslim et
+          Urgency: 'high',
+          TTL: '86400',
         },
         notification: {
           title: title || 'Yeni Mesaj',
@@ -78,34 +75,11 @@ exports.handler = async function (event, context) {
           icon: 'https://fatihpatir.github.io/ulak/assets/icon.png',
           badge: 'https://fatihpatir.github.io/ulak/assets/icon.png',
           vibrate: [200, 100, 200],
-          requireInteraction: false,
-          silent: false,
         },
         fcmOptions: {
           link: 'https://fatihpatir.github.io/ulak/',
         },
       },
-
-      // Apple APNs ayarları - uygulama ölü olsa bile teslim için
-      apns: {
-        headers: {
-          'apns-priority': '10',       // En yüksek öncelik
-          'apns-push-type': 'alert',   // Görünür bildirim tipi
-        },
-        payload: {
-          aps: {
-            alert: {
-              title: title || 'Yeni Mesaj',
-              body: body || 'Sana bir mesaj gönderdi.',
-            },
-            sound: 'default',
-            badge: 1,
-            'content-available': 1,
-            'mutable-content': 1,
-          },
-        },
-      },
-
       token: token,
     };
 
