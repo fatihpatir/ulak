@@ -178,8 +178,8 @@ function listenToChats() {
                 `;
                 li.onclick = () => openChat(chatId, { name: data.groupName, isGroup: true }, 'group');
             } else {
-                // BİREYSEL GÖRÜNÜM
-                const other = data.users.find(u => u !== currentUser.email);
+                // BİREYSEL GÖRÜNÜM (Kendisiyle başlatmışsa da fallback)
+                const other = data.users.find(u => u !== currentUser.email) || currentUser.email;
                 li.innerHTML = `
                     <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--surface-light); animate: pulse 1s infinite; flex-shrink: 0;"></div>
                     <div style="flex: 1;">
@@ -216,7 +216,8 @@ async function getUserProfile(email) {
             return profile;
         }
     } catch(e) { console.error(e); }
-    return { name: email.split('@')[0], photoURL: null };
+    const fallbackName = email ? email.split('@')[0] : 'Bilinmeyen';
+    return { name: fallbackName, photoURL: null };
 }
 
 function openChat(targetId, profile = null, type = 'personal') {
@@ -272,6 +273,7 @@ document.getElementById('back-to-chats-btn').onclick = () => switchView(views.ap
 
 // Linkleri tıklanabilir formata çeviren asistan fonksiyon
 function linkify(text) {
+    if (!text) return '';
     const urlRegex = /(https?:\/\/[^\s<]+)/g;
     return text.replace(urlRegex, function(url) {
         return `<a href="${url}" target="_blank" style="color: #60a5fa; text-decoration: underline; font-weight: 500;">Bağlantıya Git 🔗</a>`;
