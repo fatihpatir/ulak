@@ -417,6 +417,19 @@ document.getElementById('enable-notifications-btn').onclick = () => {
 
 document.getElementById('back-from-settings-btn').onclick = () => switchView(views.app);
 
+document.getElementById('save-settings-btn').onclick = async () => {
+    const btn = document.getElementById('save-settings-btn');
+    const newName = document.getElementById('settings-name-input').value.trim();
+    if (newName) {
+        btn.innerHTML = `<i class="ri-loader-4-line ri-spin"></i> Kaydet...`;
+        await setDoc(doc(db, 'users', currentUser.email), { displayName: newName }, { merge: true });
+        currentUser.displayNameCustom = newName;
+        document.getElementById('user-email-display').textContent = newName;
+        btn.innerHTML = `<i class="ri-check-line"></i> Bitti!`;
+        setTimeout(() => {
+            btn.innerHTML = `<i class="ri-save-line"></i> Kaydet`;
+            switchView(views.app);
+        }, 1000);
     }
 };
 
@@ -428,6 +441,7 @@ document.getElementById('test-notifications-btn').onclick = async () => {
     
     try {
         // 1. Token'ı tazele
+
         await requestFirebaseToken();
         
         // 2. Kendi cihazımıza bir test bildirimi fırlat (Netlify üzerinden)
