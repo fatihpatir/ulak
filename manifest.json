@@ -1,18 +1,21 @@
 {
-  "name": "PWA'ya Giriş Rehberi",
-  "short_name": "PWA Rehberi",
-  "description": "Fatih PATIR tarafından öğrenciler için hazırlanan Web, Mobil ve Oyun Geliştirme Rehberi",
+  "name": "ULAK",
+  "short_name": "ULAK",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#3b82f6",
-  "orientation": "portrait-primary",
+  "background_color": "#09090b",
+  "theme_color": "#09090b",
+  "description": "ULAK Haberleşme Platformu",
   "icons": [
     {
-      "src": "./assets/icon.svg",
-      "type": "image/svg+xml",
+      "src": "./assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "./assets/icon-512.png",
       "sizes": "512x512",
-      "purpose": "any maskable"
+      "type": "image/png"
     }
   ]
 }

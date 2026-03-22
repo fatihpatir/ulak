@@ -40,7 +40,7 @@ window.addEventListener('load', () => {
 // Service Worker (PWA) Kaydı (Ana Ekrana Ekleme için şart)
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./firebase-messaging-sw.js')
+        navigator.serviceWorker.register('/firebase-messaging-sw.js')
           .then(reg => {
               console.log('SW Kayıtlı');
           })
