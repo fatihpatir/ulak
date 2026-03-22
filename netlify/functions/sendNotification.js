@@ -58,11 +58,12 @@ exports.handler = async function (event, context) {
       };
     }
 
-    // Gönderilecek Push Notification (Bildirim) Şablonu
+    // Gönderilecek Push Notification (Bildirim) Şablonunu tamamen DATA'ya çeviriyoruz!
+    // Firebase 'notification' nesnesini Android otomatik yutabiliyor. 'data' yaparsak bizim Service Worker kendi gösterir.
     const message = {
-      notification: {
-        title: title || 'Yeni Mesaj',
-        body: body || 'Sana bir mesaj gönderdi.',
+      data: {
+        title: String(title || 'Yeni Mesaj'),
+        body: String(body || 'Sana bir mesaj gönderdi.'),
       },
       token: token,
     };

@@ -31,10 +31,10 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Arka plan bildirimi geldi:', payload);
   
-  const notificationTitle = payload.notification?.title || 'ULAK - Yeni Mesaj';
+  const notificationTitle = payload.data?.title || payload.notification?.title || 'ULAK - Yeni Mesaj';
   const notificationOptions = {
-    body: payload.notification?.body || 'Bir mesajınız var.',
-    icon: '/assets/icon.png',
+    body: payload.data?.body || payload.notification?.body || 'Bir mesajınız var.',
+    icon: '/assets/icon-192.png',
     badge: '/assets/icon.png', // Android için ufak ikon
     vibrate: [200, 100, 200], // Telefon titremesi
     tag: 'ulak-new-message', // Aynı kişiden mesaj gelirse üst üste binmesin

@@ -108,14 +108,17 @@ document.getElementById('signout-btn').onclick = () => {
 
 // Bildirim izin ve Token işlemi (Ayrı fonksiyon, tıklamayla da tetiklenebilir)
 function requestFirebaseToken() {
-    getToken(messaging, { 
-        vapidKey: 'BL8e0LxDTtbuiyjv2hxbmWVlYXkUka8KXKVI5loqqNmqSjEtKPYq5Iqwwhf8LDwTZPr9msrL95HG0TAKIDCjinI' 
-    }).then((token) => {
-        if (token) {
-            console.log("Cihaz Token'ı Alındı:", token);
-            setDoc(doc(db, 'users', currentUser.email), { fcmToken: token }, { merge: true });
-        }
-    }).catch(console.error);
+    navigator.serviceWorker.ready.then((reg) => {
+        getToken(messaging, { 
+            vapidKey: 'BL8e0LxDTtbuiyjv2hxbmWVlYXkUka8KXKVI5loqqNmqSjEtKPYq5Iqwwhf8LDwTZPr9msrL95HG0TAKIDCjinI',
+            serviceWorkerRegistration: reg
+        }).then((token) => {
+            if (token) {
+                console.log("Cihaz Token'ı Alındı:", token);
+                setDoc(doc(db, 'users', currentUser.email), { fcmToken: token }, { merge: true });
+            }
+        }).catch(console.error);
+    });
 }
 
 document.getElementById('google-login-btn').onclick = () => signInWithPopup(auth, provider);
